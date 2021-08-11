@@ -14,6 +14,7 @@ def pprint_ja3 (ja3: dict):
 sep = '-' * 5
 
 print (f"{sep} API JA3 {sep}")
+print (api_response.json ())
 api_ja3 = Decoder.decode (api_response.json () ["ja3"])
 pprint_ja3 (api_ja3)
 print ("")
