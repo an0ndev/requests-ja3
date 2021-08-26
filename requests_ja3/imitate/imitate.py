@@ -16,7 +16,7 @@ def generate_imitation_libssl (ja3_str: str):
     # print (ja3)
 
     fakessl = _compile_fakessl_extension ()
-    print (fakessl.increment (5))
+    print (fakessl.increment (n = 5))
 
 def _compile_fakessl_extension () -> types.ModuleType:
     with tempfile.TemporaryDirectory () as working_dir_str:
