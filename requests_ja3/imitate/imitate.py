@@ -9,6 +9,8 @@ import cppimport, cppimport.importer, cppimport.templating, cppimport.build_modu
 from requests_ja3.decoder import Decoder
 from requests_ja3.imitate.test import test_any_ssl
 
+import requests_ja3.imitate.fakessl_py as fakessl_py
+
 import pathlib
 
 # noinspection PyUnresolvedReferences
@@ -16,7 +18,9 @@ def generate_imitation_libssl (ja3_str: str) -> types.ModuleType:
     # ja3 = Decoder.decode (ja3_str)
     # print (ja3)
 
-    fakessl = _compile_fakessl_extension ()
+    # fakessl = _compile_fakessl_extension ()
+    fakessl = fakessl_py
+
     # local_1 = "bruh lol"
     # ssl_socket = fakessl.SSLContext.wrap_socket (local_1)
     # print (ssl_socket)

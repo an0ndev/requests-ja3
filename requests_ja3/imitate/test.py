@@ -10,11 +10,8 @@ def test_any_ssl (ssl_module: type (system_ssl)):
     # ssl_module.test_ssl (client)
     # return
 
-    input ("press enter to do the shit")
     wrapped_client = context.wrap_socket (client)
-    print ("calling connect")
     wrapped_client.connect (("www.google.com", 443))
-    print ("called connect")
     wrapped_client.write ("GET /gen_204 HTTP/1.0\r\nConnection: close\r\n\r\n".encode ())
     in_buffer: bytearray = b""
     while True:
