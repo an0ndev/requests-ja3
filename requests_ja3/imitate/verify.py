@@ -9,7 +9,7 @@ def verify_fakessl (fakessl_module: types.ModuleType) -> None:
     return _visit_node (node = fakessl_module, reference_root = ssl, node_name = "fakessl", is_root = True)
 
 def _visit_node (node: object, reference_root: type (ssl), node_name: str, is_root: bool = False):
-    raise NotImplementedError ("broken until pybind11 adds support for inspect.signature from methods")
+    # raise NotImplementedError ("broken until pybind11 adds support for inspect.signature from methods")
 
     def simple_visit_children ():
         for item_name in dir (node):
@@ -42,6 +42,9 @@ def _visit_node (node: object, reference_root: type (ssl), node_name: str, is_ro
     elif type_name_is (node, "pybind11_builtins.pybind11_type"):
         print (f"{node} is pybind11 type")
         simple_visit_children ()
+    elif type_name_is (node, "type"):
+        print (f"{node} is python builtin type")
+        simple_visit_children ()
     elif type_name_is (node, *function_or_method_type_names):
         print (f"{node} is builtin function or method")
         assert type_name_is (reference_match, *function_or_method_type_names)
@@ -50,8 +53,8 @@ def _visit_node (node: object, reference_root: type (ssl), node_name: str, is_ro
         reference_signature = inspect.signature (reference_method)
         print (f"our doc {node.__doc__}")
         print (f"our method dict {node.__dict__}")
-        inspect._signature_from_str (None, node.__doc__)
-        print (f"ref sig {reference_signature} vs my sig {inspect.signature (node)}")
+        signature = inspect.signature (node)
+        assert reference_signature == signature, f"ref sig {reference_signature} != {signature}"
     else:
         raise Exception (f"dont know what {node} (name {node_name}, type {type (node)}) is")
 
