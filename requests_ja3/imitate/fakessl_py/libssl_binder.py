@@ -34,6 +34,6 @@ def get_bound_libssl (libssl_path: pathlib.Path) -> ctypes.CDLL:
 
     _s_m ("i2d_X509", [types.X509_ptr, ctypes.c_char_p], ctypes.c_int)
 
-    _s_m ("ERR_print_errors_cb", [ctypes.POINTER (types.ERR_print_errors_cb_callback), ctypes.c_void_p], None)
+    _s_m ("ERR_print_errors_cb", [types.ERR_print_errors_cb_callback, ctypes.c_void_p], None)
 
     return libssl_handle

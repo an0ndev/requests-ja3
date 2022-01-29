@@ -14,18 +14,25 @@ import ssl as clean_ssl
 
 from .Options import VerifyMode
 
-def _get_libssl_errors () -> str:
-    errors = []
-    # @libssl_type_bindings.ERR_print_errors_cb_callback
-    def callback (_str: ctypes.c_char_p, _len: ctypes.c_size_t, user_data: ctypes.c_void_p) -> int:
-        # print ("callback called")
-        errors.append (ctypes.string_at (_str, _len.value))
-        return 0
-    print ("calling ERR_print_errors_cb")
-    callback_c = libssl_type_bindings.ERR_print_errors_cb_callback (callback)
-    print (callback_c)
-    libssl_handle.ERR_print_errors_cb (callback_c, 0)
-    return "".join (errors)
+class LibSSLError (Exception):
+    def __init__ (self, thread_id: int, info: str, file_name: str, file_line: str, extra_data: str):
+        super ().__init__ (f"Thread ID: {thread_id}, info: {info}, file name: {file_name}, file line: {file_line}, extra data: {extra_data}")
+        self.thread_id = thread_id
+        self.info = info
+        self.file_name = file_name
+        self.file_line = file_line
+        self.extra_data = extra_data
+
+def _get_libssl_errors () -> list [LibSSLError]:
+    errors: list [LibSSLError] = []
+    @libssl_type_bindings.ERR_print_errors_cb_callback
+    def callback (_str: ctypes.c_char_p, _len: int, user_data: ctypes.c_void_p) -> int:
+        error_details = ctypes.string_at (_str, _len).decode () [:-len ("\n")].split (":")
+        libssl_error = LibSSLError (int (error_details [0]), ':'.join (error_details [1:-3]), error_details [-3], error_details [-2], error_details [-1])
+        errors.append (libssl_error)
+        return 1 # continue outputting the error report
+    libssl_handle.ERR_print_errors_cb (callback, 0)
+    return errors
 
 class SSLSocket:
     def __init__ (self, socket: _socket_module.socket, context, server_side = False, do_handshake_on_connect = True, server_hostname: typing.Optional [str] = None, session = None):
@@ -94,11 +101,8 @@ class SSLSocket:
     def __del__ (self):
         libssl_handle.SSL_free (self.ssl)
     def _get_error (self, source_error_code: int) -> str:
-        print ("starting _get_error")
         error_code = libssl_handle.SSL_get_error (self.ssl, source_error_code)
-        print (f"got error_code {error_code}")
         if error_code in [libssl_type_bindings.SSL_ERROR_SSL, libssl_type_bindings.SSL_ERROR_SYSCALL]:
-            print (f"calling _get_libssl_errors")
-            return _get_libssl_errors ()
+            return ", ".join (map (str, _get_libssl_errors ()))
         else:
             return libssl_type_bindings.ssl_error_to_str (error_code)
