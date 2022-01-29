@@ -1,10 +1,11 @@
 import ctypes
 import typing
+import pathlib
 
 from . import libssl_type_bindings as types
 
-def get_bound_libssl () -> ctypes.CDLL:
-    libssl_handle = ctypes.cdll.LoadLibrary ("libssl.so")
+def get_bound_libssl (libssl_path: pathlib.Path) -> ctypes.CDLL:
+    libssl_handle = ctypes.cdll.LoadLibrary (str (libssl_path))
 
     def _setup_method (method_name: str, argtypes: list, restype: typing.Any):
         method = getattr (libssl_handle, method_name)

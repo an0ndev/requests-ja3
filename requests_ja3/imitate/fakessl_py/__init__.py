@@ -1,12 +1,22 @@
-import ctypes
-import enum
+import pathlib
+import tempfile
 
 from . import libssl_binder
-libssl_handle = libssl_binder.get_bound_libssl ()
-
 from . import SSLContext as SSLContext_module
-SSLContext_module.initialize (libssl_handle)
-SSLContext = SSLContext_module.SSLContext
+
+libssl_handle = None
+SSLContext = None
+_openssl_temp_dir = None
+
+def initialize (libssl_path: pathlib.Path, openssl_temp_dir: tempfile.TemporaryDirectory):
+    global libssl_handle, SSLContext, _openssl_temp_dir
+
+    libssl_handle = libssl_binder.get_bound_libssl (libssl_path)
+
+    SSLContext_module.initialize (libssl_handle)
+    SSLContext = SSLContext_module.SSLContext
+
+    _openssl_temp_dir = openssl_temp_dir
 
 from .Options import Options, VerifyMode
 for option_name in ["OP_NO_COMPRESSION", "OP_NO_TICKET", "OP_NO_SSLv2", "OP_NO_SSLv3", "OP_ALL"]:

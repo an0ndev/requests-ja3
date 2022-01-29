@@ -16,13 +16,15 @@ from .Options import VerifyMode
 
 def _get_libssl_errors () -> str:
     errors = []
-    @libssl_type_bindings.ERR_print_errors_cb_callback
+    # @libssl_type_bindings.ERR_print_errors_cb_callback
     def callback (_str: ctypes.c_char_p, _len: ctypes.c_size_t, user_data: ctypes.c_void_p) -> int:
-        print ("callback called")
-        errors.append (_str [:_len])
+        # print ("callback called")
+        errors.append (ctypes.string_at (_str, _len.value))
         return 0
     print ("calling ERR_print_errors_cb")
-    libssl_handle.ERR_print_errors_cb (callback, None)
+    callback_c = libssl_type_bindings.ERR_print_errors_cb_callback (callback)
+    print (callback_c)
+    libssl_handle.ERR_print_errors_cb (callback_c, 0)
     return "".join (errors)
 
 class SSLSocket:

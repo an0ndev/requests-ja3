@@ -15,8 +15,9 @@ Modifying Python's `requests` module to spoof a ja3 fingerprint
     - [x] ~~dummy pybind11 + cppimport extension~~ **(moved to ctypes)**
     - [ ] ~~ability to verify fakessl against real ssl module~~ can't inspect pybind11 method signatures yet
     - [x] dummy SSLSocket class
-    - [ ] customized openssl compile options + linkage against C extension
-    - [ ] usage of compiled openssl in SSLSocket class
+    - [ ] customized openssl compile options
+    - [x] linkage against C extension
+    - [x] usage of compiled openssl in SSLSocket class
     - [x] `ssl.wrap_socket` at minimum
     - [ ] other `ssl` functions used by requests/urllib3
 - [ ] tests using ja3s from common browsers
