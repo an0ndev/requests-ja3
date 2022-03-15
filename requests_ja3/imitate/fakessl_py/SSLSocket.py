@@ -59,13 +59,17 @@ class SSLSocket:
         if self.do_handshake_on_connect:
             self.do_handshake ()
     def do_handshake (self):
+        assert self.server_hostname is not None
+        set_host_name_ret = libssl_handle.SSL_set_tlsext_host_name (self.ssl, self.server_hostname)
+        if set_host_name_ret != 1:
+            raise Exception (f"failed to set TLS host name: {self._get_error (set_host_name_ret)}")
+
         connect_ret = libssl_handle.SSL_connect (self.ssl)
         if connect_ret < 1:
             raise Exception (f"failed to connect using ssl object: {self._get_error (connect_ret)}")
 
         if self.context.verify_mode == VerifyMode.CERT_REQUIRED:
             get_verify_result = libssl_handle.SSL_get_verify_result (self.ssl)
-            print (get_verify_result)
             if get_verify_result != libssl_type_bindings.X509_V_OK:
                 raise Exception ("failed to verify certificate")
 
@@ -77,13 +81,14 @@ class SSLSocket:
         self.handshake_complete = True
     def getpeercert (self, binary_form = False) -> typing.Optional [typing.Union [dict, bytes]]:
         certificate = libssl_handle.SSL_get_peer_certificate (self.ssl)
-        print (certificate)
+
         if binary_form:
-            if certificate is None: return None
-            certificate_bytes_ptr = (ctypes.c_void_p * 1) ()
-            certificate_encode_ret = libssl_handle.i2d_X509 (certificate, ctypes.cast (certificate_bytes_ptr, ctypes.c_void_p))
+            if certificate.value is None: return None
+            certificate_bytes_ptr = ctypes.POINTER (ctypes.c_ubyte) ()
+            certificate_bytes_ptr.value = 0
+            certificate_encode_ret = libssl_handle.i2d_X509 (certificate, ctypes.byref (certificate_bytes_ptr))
             if certificate_encode_ret < 0: raise Exception ("encoding x509 certificate failed")
-            return bytes (ctypes.cast (certificate_bytes_ptr, ctypes.c_char * certificate_encode_ret))
+            return ctypes.string_at (certificate_bytes_ptr, certificate_encode_ret)
         else:
             raise Exception (f"non-binary form not supported")
     def write (self, data: bytes):

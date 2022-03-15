@@ -4,6 +4,9 @@ import tempfile
 from . import libssl_binder
 from . import SSLContext as SSLContext_module
 
+from .shims_and_mixins import shim_module
+from .libssl_macros_mixin import MacrosMixin
+
 libssl_handle = None
 SSLContext = None
 _openssl_temp_dir = None
@@ -11,7 +14,9 @@ _openssl_temp_dir = None
 def initialize (libssl_path: pathlib.Path, openssl_temp_dir: tempfile.TemporaryDirectory):
     global libssl_handle, SSLContext, _openssl_temp_dir
 
-    libssl_handle = libssl_binder.get_bound_libssl (libssl_path)
+    unshimmed_libssl_handle = libssl_binder.get_bound_libssl (libssl_path)
+    libssl_handle = shim_module (unshimmed_libssl_handle)
+    libssl_handle.shim_apply_mixin (MacrosMixin)
 
     SSLContext_module.initialize (libssl_handle)
     SSLContext = SSLContext_module.SSLContext

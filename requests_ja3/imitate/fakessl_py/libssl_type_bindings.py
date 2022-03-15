@@ -27,3 +27,9 @@ SSL_ERROR_WANT_ASYNC_JOB       = 10
 SSL_ERROR_WANT_CLIENT_HELLO_CB = 11
 SSL_ERROR_WANT_RETRY_VERIFY    = 12
 ssl_error_to_str = lambda value: {_value: name for name, _value in locals ().items () if name.startswith ("SSL_ERROR_")} [value]
+
+# SSL_CTRL_
+SSL_CTRL_SET_TLSEXT_HOSTNAME = 55
+
+# defined in <OpenSSL src>/include/openssl/tls1.h
+TLSEXT_NAMETYPE_host_name = 0

@@ -29,7 +29,7 @@ class SSLContext:
         self.check_hostname = True
 
         if self.verify_mode == VerifyMode.CERT_REQUIRED:
-            libssl_handle.SSL_CTX_set_verify (self.context, 0x01, None)
+            libssl_handle.SSL_CTX_set_verify (self.context, types.SSL_VERIFY_PEER, None)
     def set_ciphers (self, cipher_list: str):
         set_cipher_list_ret = libssl_handle.SSL_CTX_set_cipher_list (self.context, cipher_list.encode ())
         if set_cipher_list_ret == 0: raise Exception ("failed to set cipher list on ssl context")

@@ -24,6 +24,8 @@ def get_bound_libssl (libssl_path: pathlib.Path) -> ctypes.CDLL:
     _s_m ("SSL_new", [types.SSL_CTX_ptr], types.SSL_ptr)
     _s_m ("SSL_get_error", [types.SSL_ptr, ctypes.c_int], ctypes.c_int)
     _s_m ("SSL_set_fd", [types.SSL_ptr, ctypes.c_int], ctypes.c_int)
+    # _s_m ("SSL_set_tlsext_host_name", [types.SSL_ptr, ctypes.c_char_p], ctypes.c_int)
+    _s_m ("SSL_ctrl", [types.SSL_ptr, ctypes.c_int, ctypes.c_long, ctypes.c_void_p], ctypes.c_long)
     _s_m ("SSL_connect", [types.SSL_ptr], ctypes.c_int)
     _s_m ("SSL_get_verify_result", [types.SSL_ptr], ctypes.c_long)
     _s_m ("SSL_get_peer_certificate", [types.SSL_ptr], types.X509_ptr)
@@ -32,7 +34,7 @@ def get_bound_libssl (libssl_path: pathlib.Path) -> ctypes.CDLL:
     _s_m ("SSL_shutdown", [types.SSL_ptr], ctypes.c_int)
     _s_m ("SSL_free", [types.SSL_ptr], None)
 
-    _s_m ("i2d_X509", [types.X509_ptr, ctypes.c_char_p], ctypes.c_int)
+    _s_m ("i2d_X509", [types.X509_ptr, ctypes.POINTER (ctypes.POINTER (ctypes.c_ubyte))], ctypes.c_int)
 
     _s_m ("ERR_print_errors_cb", [types.ERR_print_errors_cb_callback, ctypes.c_void_p], None)
 

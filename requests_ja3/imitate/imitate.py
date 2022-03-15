@@ -58,12 +58,18 @@ def _compile_libssl (use_in_tree_libssl: bool) -> (pathlib.Path, tempfile.Tempor
 
             openssl_src_tar = zipfile.ZipFile (openssl_src_zip_path)
             openssl_src_tar.extractall (working_dir_path)
-        print (openssl_src_path)
 
-        subprocess.Popen (["/usr/bin/chmod", "+x", "config"], cwd = openssl_src_path).wait ()
-        subprocess.Popen (["/usr/bin/chmod", "+x", "Configure"], cwd = openssl_src_path).wait ()
-        subprocess.Popen (["/usr/bin/bash", "config", "no-ssl2", "no-ssl3"], cwd = openssl_src_path).wait ()
-        subprocess.Popen (["/usr/bin/make", f"-j{os.cpu_count ()}"], cwd = openssl_src_path).wait ()
+        def quiet_exec_in_src (*args):
+            popen = subprocess.Popen (args, cwd = openssl_src_path, stderr = subprocess.PIPE, stdout = subprocess.PIPE)
+            return_code = popen.wait ()
+            if return_code != 0:
+                stdout_data, stderr_data = popen.communicate ()
+                raise Exception (stderr_data.decode ())
+
+        quiet_exec_in_src ("/usr/bin/chmod", "+x", "config")
+        quiet_exec_in_src ("/usr/bin/chmod", "+x", "Configure")
+        quiet_exec_in_src ("/usr/bin/bash", "config", "no-ssl2", "no-ssl3")
+        quiet_exec_in_src ("/usr/bin/make", f"-j{os.cpu_count ()}")
 
         libssl_archive_path = openssl_src_path / "libssl.a"
         libcrypto_archive_path = openssl_src_path / "libcrypto.a"
@@ -71,7 +77,7 @@ def _compile_libssl (use_in_tree_libssl: bool) -> (pathlib.Path, tempfile.Tempor
 
         # ugly hack to prioritize usage of symbols from compiled libcrypto:
         # combine symbols from compiled libcrypto and libssl into one single shared library
-        subprocess.Popen (["/usr/bin/gcc", "-shared", "-o", str (libcrypto_and_ssl_path), "-Wl,--whole-archive", str (libcrypto_archive_path), str (libssl_archive_path), "-Wl,--no-whole-archive"], cwd = str (openssl_src_path)).wait ()
+        quiet_exec_in_src ("/usr/bin/gcc", "-shared", "-o", str (libcrypto_and_ssl_path), "-Wl,--whole-archive", str (libcrypto_archive_path), str (libssl_archive_path), "-Wl,--no-whole-archive")
 
         return libcrypto_and_ssl_path, working_dir
     except:
