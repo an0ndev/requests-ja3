@@ -44,3 +44,31 @@ class Decoder:
             out [field_name] = field_out
 
         return out
+
+def compare (lhs: JA3, rhs: JA3, lenient: bool) -> bool:
+    try:
+        assert lhs == rhs
+        return True
+    except AssertionError:
+        if not lenient: return False
+        lhs_lenient = lhs.copy ()
+        del lhs_lenient ["elliptic_curve"]
+        del lhs_lenient ["elliptic_curve_point_format"]
+        rhs_lenient = rhs.copy ()
+        del rhs_lenient ["elliptic_curve"]
+        del rhs_lenient ["elliptic_curve_point_format"]
+        assert lhs_lenient == rhs_lenient
+        return True
+
+def print_comparison (lhs: JA3, rhs: JA3) -> bool:
+    for _field_name in lhs.keys ():
+        print (f"{_field_name} {'matches' if lhs [_field_name] == rhs [_field_name] else 'doesnt match'}")
+    if compare (lhs, rhs, lenient = False):
+        print ("MATCHES")
+        return True
+    elif compare (lhs, rhs, lenient = True):
+        print ("MATCHES (lenient)")
+        return True
+    else:
+        print ("DOESN'T MATCH")
+        return False

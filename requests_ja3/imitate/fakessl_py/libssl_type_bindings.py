@@ -1,9 +1,17 @@
 import ctypes
 
-class SSL_METHOD_ptr (ctypes.c_void_p): pass
-class SSL_CTX_ptr    (ctypes.c_void_p): pass
-class SSL_ptr        (ctypes.c_void_p): pass
-class X509_ptr       (ctypes.c_void_p): pass
+class BIO_method_ptr       (ctypes.c_void_p): pass
+class BIO_ptr              (ctypes.c_void_p): pass
+class SSL_METHOD_ptr       (ctypes.c_void_p): pass
+class SSL_CTX_ptr          (ctypes.c_void_p): pass
+class SSL_ptr              (ctypes.c_void_p): pass
+class X509_ptr             (ctypes.c_void_p): pass
+class X509_NAME_ptr        (ctypes.c_void_p): pass
+class X509_NAME_ENTRY_ptr  (ctypes.c_void_p): pass
+class ASN1_OBJECT_ptr      (ctypes.c_void_p): pass
+class ASN1_STRING_ptr      (ctypes.c_void_p): pass
+class ASN1_TIME_ptr        (ctypes.c_void_p): pass
+class ASN1_INTEGER_ptr     (ctypes.c_void_p): pass
 ERR_print_errors_cb_callback = ctypes.CFUNCTYPE (ctypes.c_int, ctypes.c_char_p, ctypes.c_size_t, ctypes.c_void_p)
 
 # defined in <OpenSSL src>/include/openssl/x509_vfy.h.in
@@ -30,6 +38,10 @@ ssl_error_to_str = lambda value: {_value: name for name, _value in locals ().ite
 
 # SSL_CTRL_
 SSL_CTRL_SET_TLSEXT_HOSTNAME = 55
+
+# <OpenSSL src>/include/openssl/bio.h.in
+# BIO_CTRL_
+BIO_CTRL_INFO = 3
 
 # defined in <OpenSSL src>/include/openssl/tls1.h
 TLSEXT_NAMETYPE_host_name = 0

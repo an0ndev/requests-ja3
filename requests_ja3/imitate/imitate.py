@@ -10,15 +10,15 @@ import requests
 
 # import cppimport, cppimport.importer, cppimport.templating, cppimport.build_module
 
-from requests_ja3.decoder import Decoder
+import requests_ja3.decoder as decoder
 from requests_ja3.imitate.verify import verify_fakessl
-from requests_ja3.imitate.test import test_any_ssl
+from requests_ja3.imitate.test import ja3_from_any_ssl
 
 import pathlib
 
 def generate_imitation_libssl (ja3_str: str, use_in_tree_libssl: bool = False, verify_against_real_ssl: bool = False) -> types.ModuleType:
-    # ja3 = Decoder.decode (ja3_str)
-    # print (ja3)
+    ja3 = decoder.Decoder.decode (ja3_str)
+    print (ja3)
 
     libssl_path, openssl_temp_dir = _compile_libssl (use_in_tree_libssl = use_in_tree_libssl)
 
@@ -31,7 +31,9 @@ def generate_imitation_libssl (ja3_str: str, use_in_tree_libssl: bool = False, v
 
     if verify_against_real_ssl: verify_fakessl (fakessl)
 
-    test_any_ssl (fakessl)
+    ja3_from_test = ja3_from_any_ssl (fakessl)
+
+    assert decoder.print_comparison (ja3, ja3_from_test)
 
     return fakessl
 

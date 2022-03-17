@@ -41,6 +41,11 @@ class SSLContext:
             if isinstance (cadata, str): cadata = cadata.encode ()
             use_certificate_chain_file_ret = libssl_handle.SSL_CTX_use_certificate_chain_file (self.context, cadata)
             if use_certificate_chain_file_ret < 1: raise Exception ("failed to use certificate file")
+    def load_default_certs (self, purpose: protocol_constants.Purpose):
+        assert purpose == protocol_constants.Purpose.CLIENT_AUTH
+        self.set_default_verify_paths ()
+    def set_default_verify_paths (self):
+        self.load_verify_locations (cafile = "/etc/ssl/certs/ca-certificates.crt", capath = "/etc/ssl/certs")
     def wrap_socket (self, socket, server_side = False, do_handshake_on_connect = True, server_hostname: typing.Optional [str] = None, session = None):
         return SSLSocket (socket, self, server_side = server_side, do_handshake_on_connect = do_handshake_on_connect, server_hostname = server_hostname, session = session)
     def __del__ (self):

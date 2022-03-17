@@ -34,6 +34,9 @@ def _get_libssl_errors () -> list [LibSSLError]:
     libssl_handle.ERR_print_errors_cb (callback, 0)
     return errors
 
+def _get_libssl_error_str () -> str:
+    return ", ".join (map (str, _get_libssl_errors ()))
+
 class SSLSocket:
     def __init__ (self, socket: _socket_module.socket, context, server_side = False, do_handshake_on_connect = True, server_hostname: typing.Optional [str] = None, session = None):
         self.socket = socket
@@ -76,21 +79,70 @@ class SSLSocket:
         if self.context.check_hostname:
             certificate = self.getpeercert ()
             clean_ssl.match_hostname (certificate, self.server_hostname)
-            raise Exception ("failed to check hostname")
 
         self.handshake_complete = True
     def getpeercert (self, binary_form = False) -> typing.Optional [typing.Union [dict, bytes]]:
         certificate = libssl_handle.SSL_get_peer_certificate (self.ssl)
+        if certificate.value is None: return None
 
-        if binary_form:
-            if certificate.value is None: return None
-            certificate_bytes_ptr = ctypes.POINTER (ctypes.c_ubyte) ()
-            certificate_bytes_ptr.value = 0
-            certificate_encode_ret = libssl_handle.i2d_X509 (certificate, ctypes.byref (certificate_bytes_ptr))
-            if certificate_encode_ret < 0: raise Exception ("encoding x509 certificate failed")
-            return ctypes.string_at (certificate_bytes_ptr, certificate_encode_ret)
-        else:
-            raise Exception (f"non-binary form not supported")
+        try:
+            if binary_form:
+                certificate_bytes_ptr = ctypes.POINTER (ctypes.c_ubyte) ()
+                certificate_bytes_ptr.value = 0
+                certificate_encode_ret = libssl_handle.i2d_X509 (certificate, ctypes.byref (certificate_bytes_ptr))
+                if certificate_encode_ret < 0: raise Exception ("encoding x509 certificate failed")
+                return ctypes.string_at (certificate_bytes_ptr, certificate_encode_ret)
+            else:
+                if libssl_handle.SSL_get_verify_result (self.ssl) != libssl_type_bindings.X509_V_OK:
+                    return {}
+                else:
+                    # example: https://docs.python.org/3/library/ssl.html#ssl.SSLSocket.getpeercert
+
+                    def decode_X509_NAME (name: libssl_type_bindings.X509_NAME_ptr):
+                        rdns = []
+                        for entry_index in range (libssl_handle.X509_NAME_entry_count (name)):
+                            entry = libssl_handle.X509_NAME_get_entry (name, entry_index)
+
+                            asn1_obj = libssl_handle.X509_NAME_ENTRY_get_object (entry)
+                            asn1_obj_nid = libssl_handle.OBJ_obj2nid (asn1_obj)
+                            asn1_key = ctypes.string_at (libssl_handle.OBJ_nid2ln (asn1_obj_nid)).decode ()
+
+                            asn1_str = libssl_handle.X509_NAME_ENTRY_get_data (entry)
+                            asn1_val = ctypes.string_at (libssl_handle.ASN1_STRING_data (asn1_str), libssl_handle.ASN1_STRING_length (asn1_str)).decode ()
+
+                            rdns.append (((asn1_key, asn1_val),))
+                        return tuple (rdns)
+
+                    decoded = {}
+
+                    decoded ["subject"] = decode_X509_NAME (libssl_handle.X509_get_subject_name (certificate))
+                    decoded ["issuer"] = decode_X509_NAME (libssl_handle.X509_get_issuer_name (certificate))
+
+                    decoded ["version"] = libssl_handle.X509_get_version (certificate) + 1
+
+                    def print_ASN1_TIME (time: libssl_type_bindings.ASN1_TIME_ptr):
+                        time_bio = libssl_handle.MemoryBIO ()
+                        try:
+                            if libssl_handle.ASN1_TIME_print (time_bio.bio, time) == 0:
+                                raise Exception (f"failed to print ASN1 time: {_get_libssl_error_str ()}")
+
+                            return time_bio.get_mem_data ().decode ()
+                        finally:
+                            del time_bio
+
+                    decoded ["notBefore"] = print_ASN1_TIME (libssl_handle.X509_get0_notBefore (certificate))
+                    decoded ["notAfter"] = print_ASN1_TIME (libssl_handle.X509_get0_notAfter (certificate))
+
+                    serial_number_bio = libssl_handle.MemoryBIO ()
+                    try:
+                        libssl_handle.i2a_ASN1_INTEGER (serial_number_bio.bio, libssl_handle.X509_get_serialNumber (certificate))
+                        decoded ["serialNumber"] = serial_number_bio.get_mem_data ().decode ()
+                    finally:
+                        del serial_number_bio
+
+                    return decoded
+        finally:
+            libssl_handle.X509_free (certificate)
     def write (self, data: bytes):
         write_ret = libssl_handle.SSL_write (self.ssl, data, len (data))
         if write_ret <= 0: raise Exception ("failed to write to ssl object")
@@ -108,6 +160,6 @@ class SSLSocket:
     def _get_error (self, source_error_code: int) -> str:
         error_code = libssl_handle.SSL_get_error (self.ssl, source_error_code)
         if error_code in [libssl_type_bindings.SSL_ERROR_SSL, libssl_type_bindings.SSL_ERROR_SYSCALL]:
-            return ", ".join (map (str, _get_libssl_errors ()))
+            return _get_libssl_error_str ()
         else:
             return libssl_type_bindings.ssl_error_to_str (error_code)

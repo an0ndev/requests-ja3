@@ -6,6 +6,7 @@ from . import SSLContext as SSLContext_module
 
 from .shims_and_mixins import shim_module
 from .libssl_macros_mixin import MacrosMixin
+from .libssl_utils_mixin import UtilsMixin
 
 libssl_handle = None
 SSLContext = None
@@ -17,6 +18,7 @@ def initialize (libssl_path: pathlib.Path, openssl_temp_dir: tempfile.TemporaryD
     unshimmed_libssl_handle = libssl_binder.get_bound_libssl (libssl_path)
     libssl_handle = shim_module (unshimmed_libssl_handle)
     libssl_handle.shim_apply_mixin (MacrosMixin)
+    libssl_handle.shim_apply_mixin (UtilsMixin)
 
     SSLContext_module.initialize (libssl_handle)
     SSLContext = SSLContext_module.SSLContext
@@ -41,3 +43,14 @@ for constant_name in [
     "TLSVersion",
 ]:
     globals () [constant_name] = getattr (clean_ssl, constant_name)
+
+# noinspection PyUnresolvedReferences
+def create_default_context (purpose: Purpose, cafile = None, capath = None, cadata = None) -> SSLContext:
+    assert purpose == Purpose.CLIENT_AUTH
+    # noinspection PyCallingNonCallable
+    context = SSLContext ()
+    if cafile is None and capath is None and cadata is None:
+        context.load_default_certs (purpose = purpose)
+    else:
+        context.load_verify_locations (cafile, capath, cadata)
+    return context
