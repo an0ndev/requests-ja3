@@ -3,11 +3,17 @@ import typing
 import os
 
 from . import libssl_type_bindings as types
+
+from requests_ja3.decoder import JA3
+
 libssl_handle: ctypes.CDLL = None
-def initialize (_libssl_handle):
-    global libssl_handle
+target_ja3: JA3 = None
+
+def initialize (_libssl_handle, _target_ja3):
+    global libssl_handle, target_ja3
     libssl_handle = _libssl_handle
-    SSLSocket_module.initialize (libssl_handle)
+    SSLSocket_module.initialize (libssl_handle, _target_ja3)
+    target_ja3 = _target_ja3
 
 from . import SSLSocket as SSLSocket_module
 SSLSocket = SSLSocket_module.SSLSocket

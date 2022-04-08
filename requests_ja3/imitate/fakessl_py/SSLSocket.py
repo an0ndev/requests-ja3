@@ -1,12 +1,18 @@
 import typing
 
 import ctypes
-libssl_handle: ctypes.CDLL = None
-def initialize (_libssl_handle):
-    global libssl_handle
-    libssl_handle = _libssl_handle
 
-from . import libssl_type_bindings
+from requests_ja3.decoder import JA3
+
+libssl_handle: ctypes.CDLL = None
+target_ja3: JA3 = None
+
+def initialize (_libssl_handle, _target_ja3: JA3):
+    global libssl_handle, target_ja3
+    libssl_handle = _libssl_handle
+    target_ja3 = _target_ja3
+
+from . import libssl_type_bindings as types
 
 import socket as _socket_module
 
@@ -25,7 +31,7 @@ class LibSSLError (Exception):
 
 def _get_libssl_errors () -> list [LibSSLError]:
     errors: list [LibSSLError] = []
-    @libssl_type_bindings.ERR_print_errors_cb_callback
+    @types.ERR_print_errors_cb_callback
     def callback (_str: ctypes.c_char_p, _len: int, user_data: ctypes.c_void_p) -> int:
         error_details = ctypes.string_at (_str, _len).decode () [:-len ("\n")].split (":")
         libssl_error = LibSSLError (int (error_details [0]), ':'.join (error_details [1:-3]), error_details [-3], error_details [-2], error_details [-1])
@@ -53,6 +59,35 @@ class SSLSocket:
         self.server_hostname = server_hostname
 
         if session is not None: raise NotImplemented ("SSLSession not yet supported")
+
+        supported_ciphers: types.STACK_OF_SSL_CIPHER_ptr = libssl_handle.SSL_get_ciphers (self.ssl)
+
+        # Make sure all requested ciphers are available
+        # (the list of supported ciphers starts as the list of all available)
+        supported_ciphers_ids = libssl_handle.cipher_ids_from_stack (supported_ciphers)
+        for required_cipher in target_ja3 ["accepted_ciphers"]:
+            if required_cipher not in supported_ciphers_ids:
+                raise Exception (f"Your build of OpenSSL does not support cipher {required_cipher}")
+
+        ### START MODIFICATION OF ACCEPTED CIPHERS FIELD
+
+        # need to flatten to list to be able to modify while iterating
+        supported_ciphers_list: list [types.SSL_CIPHER_ptr] = list (libssl_handle.stack_iterator (supported_ciphers))
+        for supported_cipher in supported_ciphers_list:
+            supported_cipher_id = libssl_handle.SSL_CIPHER_get_protocol_id (supported_cipher)
+            if supported_cipher_id not in target_ja3 ["accepted_ciphers"]:
+                delete_ret = libssl_handle.sk_SSL_CIPHER_delete_ptr (supported_ciphers, supported_cipher)
+                assert delete_ret and ctypes.cast (delete_ret, ctypes.c_void_p).value == ctypes.cast (supported_cipher, ctypes.c_void_p).value
+
+        ### END MODIFICATION OF ACCEPTED CIPHERS FIELD
+
+        ciphers_to_use: types.STACK_OF_SSL_CIPHER_ptr = libssl_handle.SSL_get1_supported_ciphers (self.ssl)
+        try:
+            ciphers_to_use_ids = libssl_handle.cipher_ids_from_stack (ciphers_to_use)
+            print (f"CIPHERS TO USE: {ciphers_to_use_ids}")
+            assert target_ja3 ["accepted_ciphers"] == ciphers_to_use_ids
+        finally:
+            libssl_handle.OPENSSL_sk_free (ctypes.cast (ciphers_to_use, types.OPENSSL_STACK_ptr))
     def connect (self, address: tuple):
         self.socket.connect (address)
 
@@ -73,7 +108,7 @@ class SSLSocket:
 
         if self.context.verify_mode == VerifyMode.CERT_REQUIRED:
             get_verify_result = libssl_handle.SSL_get_verify_result (self.ssl)
-            if get_verify_result != libssl_type_bindings.X509_V_OK:
+            if get_verify_result != types.X509_V_OK:
                 raise Exception ("failed to verify certificate")
 
         if self.context.check_hostname:
@@ -93,12 +128,12 @@ class SSLSocket:
                 if certificate_encode_ret < 0: raise Exception ("encoding x509 certificate failed")
                 return ctypes.string_at (certificate_bytes_ptr, certificate_encode_ret)
             else:
-                if libssl_handle.SSL_get_verify_result (self.ssl) != libssl_type_bindings.X509_V_OK:
+                if libssl_handle.SSL_get_verify_result (self.ssl) != types.X509_V_OK:
                     return {}
                 else:
                     # example: https://docs.python.org/3/library/ssl.html#ssl.SSLSocket.getpeercert
 
-                    def decode_X509_NAME (name: libssl_type_bindings.X509_NAME_ptr):
+                    def decode_X509_NAME (name: types.X509_NAME_ptr):
                         rdns = []
                         for entry_index in range (libssl_handle.X509_NAME_entry_count (name)):
                             entry = libssl_handle.X509_NAME_get_entry (name, entry_index)
@@ -120,7 +155,7 @@ class SSLSocket:
 
                     decoded ["version"] = libssl_handle.X509_get_version (certificate) + 1
 
-                    def print_ASN1_TIME (time: libssl_type_bindings.ASN1_TIME_ptr):
+                    def print_ASN1_TIME (time: types.ASN1_TIME_ptr):
                         time_bio = libssl_handle.MemoryBIO ()
                         try:
                             if libssl_handle.ASN1_TIME_print (time_bio.bio, time) == 0:
@@ -159,7 +194,7 @@ class SSLSocket:
         libssl_handle.SSL_free (self.ssl)
     def _get_error (self, source_error_code: int) -> str:
         error_code = libssl_handle.SSL_get_error (self.ssl, source_error_code)
-        if error_code in [libssl_type_bindings.SSL_ERROR_SSL, libssl_type_bindings.SSL_ERROR_SYSCALL]:
+        if error_code in [types.SSL_ERROR_SSL, types.SSL_ERROR_SYSCALL]:
             return _get_libssl_error_str ()
         else:
-            return libssl_type_bindings.ssl_error_to_str (error_code)
+            return types.ssl_error_to_str (error_code)

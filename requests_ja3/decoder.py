@@ -62,7 +62,10 @@ def compare (lhs: JA3, rhs: JA3, lenient: bool) -> bool:
 
 def print_comparison (lhs: JA3, rhs: JA3) -> bool:
     for _field_name in lhs.keys ():
-        print (f"{_field_name} {'matches' if lhs [_field_name] == rhs [_field_name] else 'doesnt match'}")
+        if lhs [_field_name] == rhs [_field_name]:
+            print (f"{_field_name} matches")
+        else:
+            print (f"{_field_name} doesn't match ({lhs [_field_name]} vs {rhs [_field_name]})")
     if compare (lhs, rhs, lenient = False):
         print ("MATCHES")
         return True

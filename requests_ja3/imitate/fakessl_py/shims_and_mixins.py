@@ -1,5 +1,13 @@
 import typing
 
+class ListWrapperMixin:
+    def __init__ (self, mixin_methods: list [typing.Callable]):
+        self.mixin_methods = mixin_methods
+    def __getattr__ (self, item):
+        for mixin_method in self.mixin_methods:
+            if mixin_method.__name__ == item: return mixin_method
+        raise AttributeError (item)
+
 class ShimmedModule:
     def __init__ (self, src_module):
         self.src_module = src_module
@@ -31,6 +39,8 @@ class ShimmedModule:
         return wrapper_method
     def shim_apply_mixin (self, mixin_class):
         self.mixin_classes.append (mixin_class)
+    def shim_apply_list_mixin (self, mixin_list):
+        self.mixin_classes.append (ListWrapperMixin (mixin_list))
 
 def shim_module (src_module):
     return ShimmedModule (src_module)

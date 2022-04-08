@@ -8,22 +8,28 @@ from .shims_and_mixins import shim_module
 from .libssl_macros_mixin import MacrosMixin
 from .libssl_utils_mixin import UtilsMixin
 
+from requests_ja3.decoder import JA3
+
 libssl_handle = None
 SSLContext = None
 _openssl_temp_dir = None
+target_ja3 = None
 
-def initialize (libssl_path: pathlib.Path, openssl_temp_dir: tempfile.TemporaryDirectory):
-    global libssl_handle, SSLContext, _openssl_temp_dir
+def initialize (libssl_path: pathlib.Path, openssl_temp_dir: tempfile.TemporaryDirectory, _target_ja3: JA3):
+    global libssl_handle, SSLContext, _openssl_temp_dir, target_ja3
 
-    unshimmed_libssl_handle = libssl_binder.get_bound_libssl (libssl_path)
+    unshimmed_libssl_handle, binder_time_mixin_methods = libssl_binder.get_bound_libssl (libssl_path)
     libssl_handle = shim_module (unshimmed_libssl_handle)
     libssl_handle.shim_apply_mixin (MacrosMixin)
     libssl_handle.shim_apply_mixin (UtilsMixin)
+    libssl_handle.shim_apply_list_mixin (binder_time_mixin_methods)
 
-    SSLContext_module.initialize (libssl_handle)
+    SSLContext_module.initialize (libssl_handle, _target_ja3)
     SSLContext = SSLContext_module.SSLContext
 
     _openssl_temp_dir = openssl_temp_dir
+
+    target_ja3 = _target_ja3
 
 from .Options import Options, VerifyMode
 for option_name in ["OP_NO_COMPRESSION", "OP_NO_TICKET", "OP_NO_SSLv2", "OP_NO_SSLv3", "OP_ALL"]:

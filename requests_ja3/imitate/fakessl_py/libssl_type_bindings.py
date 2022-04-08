@@ -4,6 +4,23 @@ class BIO_method_ptr       (ctypes.c_void_p): pass
 class BIO_ptr              (ctypes.c_void_p): pass
 class SSL_METHOD_ptr       (ctypes.c_void_p): pass
 class SSL_CTX_ptr          (ctypes.c_void_p): pass
+class SSL_CIPHER_ptr       (ctypes.c_void_p): pass
+class OPENSSL_STACK_ptr    (ctypes.c_void_p): pass
+OPENSSL_sk_compfunc = ctypes.CFUNCTYPE (ctypes.c_int, ctypes.c_void_p, ctypes.c_void_p)
+OPENSSL_sk_copyfunc = ctypes.CFUNCTYPE (ctypes.c_void_p, ctypes.c_void_p)
+OPENSSL_sk_freefunc = ctypes.CFUNCTYPE (None, ctypes.c_void_p)
+def define_types_for_stack_of (inner_class: type (ctypes.c_void_p), class_name: str):
+    stack_class_name = f"STACK_OF_{class_name}_ptr"
+    class STACK_OF_cls_ptr (ctypes.c_void_p):
+        inner = inner_class
+        inner_name = class_name
+    STACK_OF_cls_ptr.__name__ = stack_class_name
+    globals () [stack_class_name] = STACK_OF_cls_ptr
+    globals () [f"sk_{class_name}_compfunc"] = ctypes.CFUNCTYPE (ctypes.c_int, inner_class, inner_class)
+    globals () [f"sk_{class_name}_copyfunc"] = ctypes.CFUNCTYPE (inner_class, inner_class)
+    globals () [f"sk_{class_name}_freefunc"] = ctypes.CFUNCTYPE (None, inner_class)
+
+define_types_for_stack_of (SSL_CIPHER_ptr, "SSL_CIPHER")
 class SSL_ptr              (ctypes.c_void_p): pass
 class X509_ptr             (ctypes.c_void_p): pass
 class X509_NAME_ptr        (ctypes.c_void_p): pass

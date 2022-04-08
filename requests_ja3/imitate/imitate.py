@@ -17,13 +17,13 @@ from requests_ja3.imitate.test import ja3_from_any_ssl
 import pathlib
 
 def generate_imitation_libssl (ja3_str: str, use_in_tree_libssl: bool = False, verify_against_real_ssl: bool = False) -> types.ModuleType:
-    ja3 = decoder.Decoder.decode (ja3_str)
-    print (ja3)
+    target_ja3 = decoder.Decoder.decode (ja3_str)
+    print (target_ja3)
 
-    libssl_path, openssl_temp_dir = _compile_libssl (use_in_tree_libssl = use_in_tree_libssl)
+    libssl_path, openssl_temp_dir = _compile_libssl (target_ja3, use_in_tree_libssl = use_in_tree_libssl)
 
     import requests_ja3.imitate.fakessl_py as fakessl
-    fakessl.initialize (libssl_path, openssl_temp_dir)
+    fakessl.initialize (libssl_path, openssl_temp_dir, target_ja3)
 
     # local_1 = "bruh lol"
     # ssl_socket = fakessl.SSLContext.wrap_socket (local_1)
@@ -33,11 +33,11 @@ def generate_imitation_libssl (ja3_str: str, use_in_tree_libssl: bool = False, v
 
     ja3_from_test = ja3_from_any_ssl (fakessl)
 
-    assert decoder.print_comparison (ja3, ja3_from_test)
+    assert decoder.print_comparison (target_ja3, ja3_from_test)
 
     return fakessl
 
-def _compile_libssl (use_in_tree_libssl: bool) -> (pathlib.Path, tempfile.TemporaryDirectory):
+def _compile_libssl (target_ja3, use_in_tree_libssl: bool) -> (pathlib.Path, tempfile.TemporaryDirectory):
     working_dir = tempfile.TemporaryDirectory ()
 
     try:
@@ -63,14 +63,20 @@ def _compile_libssl (use_in_tree_libssl: bool) -> (pathlib.Path, tempfile.Tempor
 
         def quiet_exec_in_src (*args):
             popen = subprocess.Popen (args, cwd = openssl_src_path, stderr = subprocess.PIPE, stdout = subprocess.PIPE)
-            return_code = popen.wait ()
-            if return_code != 0:
-                stdout_data, stderr_data = popen.communicate ()
+            stdout_data, stderr_data = popen.communicate ()
+            if popen.returncode != 0:
                 raise Exception (stderr_data.decode ())
 
         quiet_exec_in_src ("/usr/bin/chmod", "+x", "config")
         quiet_exec_in_src ("/usr/bin/chmod", "+x", "Configure")
-        quiet_exec_in_src ("/usr/bin/bash", "config", "no-ssl2", "no-ssl3")
+        config_options = ["no-ssl2", "no-ssl3"]
+        if 0xFF in target_ja3 ["accepted_ciphers"]:
+            print ("enabling RFC 5746 as cipher")
+            config_options.append ("-DFAKESSL_RFC5746_AS_CIPHER")
+        if 65281 in target_ja3 ["list_of_extensions"]:
+            print ("enabling RFC 5746 as extension")
+            config_options.append ("-DFAKESSL_RFC5746_AS_EXTENSION")
+        quiet_exec_in_src ("/usr/bin/bash", "config", *config_options)
         quiet_exec_in_src ("/usr/bin/make", f"-j{os.cpu_count ()}")
 
         libssl_archive_path = openssl_src_path / "libssl.a"
