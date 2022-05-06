@@ -5,6 +5,7 @@ import tempfile
 import types
 import zipfile
 import subprocess
+import typing
 
 import requests
 
@@ -12,14 +13,10 @@ import requests
 
 import requests_ja3.decoder as decoder
 from requests_ja3.imitate.verify import verify_fakessl
-from requests_ja3.imitate.test import ja3_from_any_ssl
 
 import pathlib
 
-def generate_imitation_libssl (ja3_str: str, use_in_tree_libssl: bool = False, verify_against_real_ssl: bool = False) -> types.ModuleType:
-    target_ja3 = decoder.Decoder.decode (ja3_str)
-    print (target_ja3)
-
+def generate_imitation_libssl (target_ja3: typing.Optional [decoder.JA3], use_in_tree_libssl: bool = False, verify_against_real_ssl: bool = False) -> types.ModuleType:
     libssl_path, openssl_temp_dir = _compile_libssl (target_ja3, use_in_tree_libssl = use_in_tree_libssl)
 
     import requests_ja3.imitate.fakessl_py as fakessl
@@ -31,13 +28,9 @@ def generate_imitation_libssl (ja3_str: str, use_in_tree_libssl: bool = False, v
 
     if verify_against_real_ssl: verify_fakessl (fakessl)
 
-    ja3_from_test = ja3_from_any_ssl (fakessl)
-
-    assert decoder.print_comparison (target_ja3, ja3_from_test)
-
     return fakessl
 
-def _compile_libssl (target_ja3, use_in_tree_libssl: bool) -> (pathlib.Path, tempfile.TemporaryDirectory):
+def _compile_libssl (target_ja3: typing.Optional [dict], use_in_tree_libssl: bool) -> (pathlib.Path, tempfile.TemporaryDirectory):
     working_dir = tempfile.TemporaryDirectory ()
 
     try:
@@ -70,12 +63,13 @@ def _compile_libssl (target_ja3, use_in_tree_libssl: bool) -> (pathlib.Path, tem
         quiet_exec_in_src ("/usr/bin/chmod", "+x", "config")
         quiet_exec_in_src ("/usr/bin/chmod", "+x", "Configure")
         config_options = ["no-ssl2", "no-ssl3"]
-        if 0xFF in target_ja3 ["accepted_ciphers"]:
-            print ("enabling RFC 5746 as cipher")
-            config_options.append ("-DFAKESSL_RFC5746_AS_CIPHER")
-        if 65281 in target_ja3 ["list_of_extensions"]:
-            print ("enabling RFC 5746 as extension")
-            config_options.append ("-DFAKESSL_RFC5746_AS_EXTENSION")
+        if target_ja3 is not None:
+            if 0xFF in target_ja3 ["accepted_ciphers"]:
+                config_options.append ("-DFAKESSL_RFC5746_AS_CIPHER")
+            if 65281 in target_ja3 ["list_of_extensions"]:
+                config_options.append ("-DFAKESSL_RFC5746_AS_EXTENSION")
+            if target_ja3 ["elliptic_curve"] is None:
+                config_options.append ("-DFAKESSL_DISABLE_ECC")
         quiet_exec_in_src ("/usr/bin/bash", "config", *config_options)
         quiet_exec_in_src ("/usr/bin/make", f"-j{os.cpu_count ()}")
 

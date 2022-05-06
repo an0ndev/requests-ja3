@@ -21,11 +21,17 @@ def get_bound_libssl (libssl_path: pathlib.Path) -> (ctypes.CDLL, list [typing.C
     _s_m ("BIO_free", [types.BIO_ptr], None)
 
     _s_m ("TLS_client_method", [], types.SSL_METHOD_ptr)
+    _s_m ("TLS_server_method", [], types.SSL_METHOD_ptr)
 
     _s_m ("SSL_CTX_new", [], types.SSL_CTX_ptr)
     _s_m ("SSL_CTX_set_cipher_list", [types.SSL_CTX_ptr, ctypes.c_char_p], ctypes.c_int)
     _s_m ("SSL_CTX_load_verify_locations", [types.SSL_CTX_ptr, ctypes.c_char_p, ctypes.c_char_p], ctypes.c_int)
     _s_m ("SSL_CTX_use_certificate_chain_file", [types.SSL_CTX_ptr, ctypes.c_char_p], ctypes.c_int)
+    _s_m ("SSL_CTX_use_PrivateKey_file", [types.SSL_CTX_ptr, ctypes.c_char_p, ctypes.c_int], ctypes.c_int)
+    _s_m ("SSL_CTX_ctrl", [types.SSL_CTX_ptr, ctypes.c_int, ctypes.c_long, ctypes.c_void_p], ctypes.c_long)
+    _s_m ("SSL_CTX_set_alpn_protos", [types.SSL_CTX_ptr, ctypes.c_char_p, ctypes.c_uint], ctypes.c_int)
+    _s_m ("SSL_CTX_enable_ct", [types.SSL_CTX_ptr, ctypes.c_int], ctypes.c_int)
+    _s_m ("SSL_CTX_set_options", [types.SSL_CTX_ptr, ctypes.c_ulong], ctypes.c_ulong)
     _s_m ("SSL_CTX_free", [types.SSL_CTX_ptr], None)
 
     _s_m ("SSL_CIPHER_find", [types.SSL_ptr, ctypes.POINTER (ctypes.c_ubyte)], types.SSL_CIPHER_ptr)
@@ -122,6 +128,7 @@ def get_bound_libssl (libssl_path: pathlib.Path) -> (ctypes.CDLL, list [typing.C
     _s_m ("SSL_write", [types.SSL_ptr, ctypes.c_void_p, ctypes.c_int], ctypes.c_int)
     _s_m ("SSL_read", [types.SSL_ptr, ctypes.c_void_p, ctypes.c_int], ctypes.c_int)
     _s_m ("SSL_shutdown", [types.SSL_ptr], ctypes.c_int)
+    _s_m ("FAKESSL_SSL_get_ja3", [types.SSL_ptr], ctypes.c_void_p)
     _s_m ("SSL_free", [types.SSL_ptr], None)
 
     _s_m ("i2d_X509", [types.X509_ptr, ctypes.POINTER (ctypes.POINTER (ctypes.c_ubyte))], ctypes.c_int)
@@ -151,5 +158,7 @@ def get_bound_libssl (libssl_path: pathlib.Path) -> (ctypes.CDLL, list [typing.C
     _s_m ("i2a_ASN1_INTEGER", [types.BIO_ptr, types.ASN1_INTEGER_ptr], ctypes.c_int)
 
     _s_m ("ERR_print_errors_cb", [types.ERR_print_errors_cb_callback, ctypes.c_void_p], None)
+
+    _s_m ("CRYPTO_free", [ctypes.c_void_p, ctypes.c_char_p, ctypes.c_int], None)
 
     return libssl_handle, binder_time_mixin_methods

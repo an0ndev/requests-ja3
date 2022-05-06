@@ -14,9 +14,10 @@ libssl_handle = None
 SSLContext = None
 _openssl_temp_dir = None
 target_ja3 = None
+socket_exceptions = None
 
 def initialize (libssl_path: pathlib.Path, openssl_temp_dir: tempfile.TemporaryDirectory, _target_ja3: JA3):
-    global libssl_handle, SSLContext, _openssl_temp_dir, target_ja3
+    global libssl_handle, SSLContext, socket_exceptions, _openssl_temp_dir, target_ja3
 
     unshimmed_libssl_handle, binder_time_mixin_methods = libssl_binder.get_bound_libssl (libssl_path)
     libssl_handle = shim_module (unshimmed_libssl_handle)
@@ -26,6 +27,8 @@ def initialize (libssl_path: pathlib.Path, openssl_temp_dir: tempfile.TemporaryD
 
     SSLContext_module.initialize (libssl_handle, _target_ja3)
     SSLContext = SSLContext_module.SSLContext
+
+    socket_exceptions = SSLContext_module.socket_exceptions
 
     _openssl_temp_dir = openssl_temp_dir
 
@@ -51,10 +54,10 @@ for constant_name in [
     globals () [constant_name] = getattr (clean_ssl, constant_name)
 
 # noinspection PyUnresolvedReferences
-def create_default_context (purpose: Purpose, cafile = None, capath = None, cadata = None) -> SSLContext:
-    assert purpose == Purpose.CLIENT_AUTH
+def create_default_context (purpose: Purpose = Purpose.SERVER_AUTH, cafile = None, capath = None, cadata = None) -> SSLContext:
+    assert purpose in (Purpose.SERVER_AUTH, Purpose.CLIENT_AUTH)
     # noinspection PyCallingNonCallable
-    context = SSLContext ()
+    context = SSLContext (PROTOCOL_TLS_CLIENT if purpose == Purpose.SERVER_AUTH else PROTOCOL_TLS_SERVER)
     if cafile is None and capath is None and cadata is None:
         context.load_default_certs (purpose = purpose)
     else:

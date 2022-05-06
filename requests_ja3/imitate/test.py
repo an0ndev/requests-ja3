@@ -7,7 +7,7 @@ import ssl as system_ssl
 import requests_ja3.decoder as decoder
 
 def ja3_from_any_ssl (ssl_module: type (system_ssl)) -> decoder.JA3:
-    context = ssl_module.create_default_context (purpose = ssl_module.Purpose.CLIENT_AUTH)
+    context = ssl_module.create_default_context ()
     client = socket.socket (socket.AF_INET, socket.SOCK_STREAM)
     # ssl_module.test_no_ssl (client)
     # ssl_module.test_ssl (client)

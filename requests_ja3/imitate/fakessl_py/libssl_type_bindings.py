@@ -31,8 +31,17 @@ class ASN1_TIME_ptr        (ctypes.c_void_p): pass
 class ASN1_INTEGER_ptr     (ctypes.c_void_p): pass
 ERR_print_errors_cb_callback = ctypes.CFUNCTYPE (ctypes.c_int, ctypes.c_char_p, ctypes.c_size_t, ctypes.c_void_p)
 
+# <OpenSSL src>/include/openssl/x509.h
+X509_FILETYPE_PEM = 1
+X509_FILETYPE_ASN1 = 2
+
 # defined in <OpenSSL src>/include/openssl/x509_vfy.h.in
 X509_V_OK = 0
+
+# defined in <OpenSSL src>/include/openssl/ssl.h
+SSL_CT_VALIDATION_PERMISSIVE = 0
+SSL_FILETYPE_ASN1 = X509_FILETYPE_ASN1
+SSL_FILETYPE_PEM = X509_FILETYPE_PEM
 
 # defined in <OpenSSL src>/include/openssl/ssl.h.in
 SSL_VERIFY_NONE = 0
@@ -55,6 +64,8 @@ ssl_error_to_str = lambda value: {_value: name for name, _value in locals ().ite
 
 # SSL_CTRL_
 SSL_CTRL_SET_TLSEXT_HOSTNAME = 55
+SSL_CTRL_SET_TLSEXT_STATUS_REQ_TYPE = 65
+SSL_CTRL_SET_GROUPS_LIST = 92
 
 # <OpenSSL src>/include/openssl/bio.h.in
 # BIO_CTRL_
@@ -62,3 +73,4 @@ BIO_CTRL_INFO = 3
 
 # defined in <OpenSSL src>/include/openssl/tls1.h
 TLSEXT_NAMETYPE_host_name = 0
+TLSEXT_STATUSTYPE_ocsp = 1
