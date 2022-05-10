@@ -3,7 +3,7 @@ import socket
 
 import ctypes
 
-from requests_ja3.decoder import Decoder, JA3
+from requests_ja3.decoder import JA3
 
 libssl_handle: ctypes.CDLL = None
 target_ja3: JA3 = None
@@ -77,19 +77,18 @@ class SSLSocket:
         # Make sure all requested ciphers are available
         # (the list of supported ciphers starts as the list of all available)
         supported_ciphers_ids = libssl_handle.cipher_ids_from_stack (supported_ciphers)
-        for required_cipher in target_ja3 ["accepted_ciphers"]:
+        for required_cipher in target_ja3.accepted_ciphers:
             if required_cipher not in supported_ciphers_ids:
                 raise Exception (f"Your build of OpenSSL does not support cipher {required_cipher}")
 
         ### START MODIFICATION OF ACCEPTED CIPHERS FIELD
 
-        # need to flatten to list to be able to modify while iterating
-        supported_ciphers_list: list [types.SSL_CIPHER_ptr] = list (libssl_handle.stack_iterator (supported_ciphers))
-        for supported_cipher in supported_ciphers_list:
-            supported_cipher_id = libssl_handle.SSL_CIPHER_get_protocol_id (supported_cipher)
-            if supported_cipher_id not in target_ja3 ["accepted_ciphers"]:
-                delete_ret = libssl_handle.sk_SSL_CIPHER_delete_ptr (supported_ciphers, supported_cipher)
-                assert delete_ret and ctypes.cast (delete_ret, ctypes.c_void_p).value == ctypes.cast (supported_cipher, ctypes.c_void_p).value
+        target_supported_ciphers_array = (ctypes.c_uint16 * len (target_ja3.accepted_ciphers)) (*target_ja3.accepted_ciphers)
+        libssl_handle.FAKESSL_SSL_set_cipher_list (
+            self.ssl,
+            ctypes.cast (target_supported_ciphers_array, ctypes.POINTER (ctypes.c_uint16)),
+            len (target_ja3.accepted_ciphers)
+        )
 
         ### END MODIFICATION OF ACCEPTED CIPHERS FIELD
 
@@ -97,7 +96,7 @@ class SSLSocket:
         try:
             ciphers_to_use_ids = libssl_handle.cipher_ids_from_stack (ciphers_to_use)
             print (f"CIPHERS TO USE: {ciphers_to_use_ids}")
-            assert target_ja3 ["accepted_ciphers"] == ciphers_to_use_ids
+            assert target_ja3.accepted_ciphers == ciphers_to_use_ids
         finally:
             libssl_handle.OPENSSL_sk_free (ctypes.cast (ciphers_to_use, types.OPENSSL_STACK_ptr))
     def connect (self, address: tuple):
@@ -110,7 +109,7 @@ class SSLSocket:
             self.do_handshake ()
     def do_handshake (self):
         if self.server_hostname is not None:
-            assert self.server_side
+            assert not self.server_side
             set_host_name_ret = libssl_handle.SSL_set_tlsext_host_name (self.ssl, self.server_hostname)
             if set_host_name_ret != 1:
                 raise Exception (f"failed to set TLS host name: {self._get_error (set_host_name_ret)}")
@@ -224,12 +223,16 @@ class SSLSocket:
         if not self.server_side:
             shutdown_ret = libssl_handle.SSL_shutdown (self.ssl)
             if shutdown_ret < 0: raise Exception ("failed to shutdown ssl object")
-        self.socket.shutdown (socket.SHUT_RDWR)
+        try:
+            self.socket.shutdown (socket.SHUT_RDWR)
+        except OSError as os_error:
+            if os_error.errno != 107: # Transport endpoint is not connected
+                raise
         self.socket.close ()
-    def get_ja3_str (self) -> str:
+    def get_ja3_str (self, remove_grease: bool) -> str:
         assert self._client_from_server
         assert self.handshake_complete
-        raw_ja3_str = libssl_handle.FAKESSL_SSL_get_ja3 (self.ssl)
+        raw_ja3_str = libssl_handle.FAKESSL_SSL_get_ja3 (self.ssl, remove_grease)
         try:
             ja3_str = ctypes.string_at (ctypes.cast (raw_ja3_str, ctypes.c_char_p)).decode ()
         finally:

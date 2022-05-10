@@ -30,5 +30,4 @@ class UtilsMixin:
             libssl_handle.SSL_CIPHER_get_protocol_id (cipher)
             for cipher in libssl_handle.stack_iterator (cipher_stack)
         ]
-        cipher_ids.sort ()
         return cipher_ids

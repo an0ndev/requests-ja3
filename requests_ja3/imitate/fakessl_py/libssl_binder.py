@@ -128,7 +128,11 @@ def get_bound_libssl (libssl_path: pathlib.Path) -> (ctypes.CDLL, list [typing.C
     _s_m ("SSL_write", [types.SSL_ptr, ctypes.c_void_p, ctypes.c_int], ctypes.c_int)
     _s_m ("SSL_read", [types.SSL_ptr, ctypes.c_void_p, ctypes.c_int], ctypes.c_int)
     _s_m ("SSL_shutdown", [types.SSL_ptr], ctypes.c_int)
-    _s_m ("FAKESSL_SSL_get_ja3", [types.SSL_ptr], ctypes.c_void_p)
+    # Client
+    _s_m ("FAKESSL_SSL_set_cipher_list", [types.SSL_ptr, ctypes.POINTER (ctypes.c_uint16), ctypes.c_int], None)
+    _s_m ("FAKESSL_SSL_set_groups_list", [types.SSL_ptr, ctypes.POINTER (ctypes.c_int), ctypes.c_int], None)
+    # Server
+    _s_m ("FAKESSL_SSL_get_ja3", [types.SSL_ptr, ctypes.c_bool], ctypes.c_void_p)
     _s_m ("SSL_free", [types.SSL_ptr], None)
 
     _s_m ("i2d_X509", [types.X509_ptr, ctypes.POINTER (ctypes.POINTER (ctypes.c_ubyte))], ctypes.c_int)

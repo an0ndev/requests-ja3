@@ -49,31 +49,37 @@ class SSLContext:
         if self._is_client:
             self._do_client_setup ()
     def _do_client_setup (self):
-        if 5 in target_ja3 ["list_of_extensions"]:
+        if 5 in target_ja3.list_of_extensions:
             set_tlsext_status_type_ret = libssl_handle.SSL_CTX_set_tlsext_status_type (self.context, types.TLSEXT_STATUSTYPE_ocsp)
             if set_tlsext_status_type_ret == 0: raise Exception ("failed to enable extension #5")
 
-        if 16 in target_ja3 ["list_of_extensions"]:
+        if 16 in target_ja3.list_of_extensions:
             proto_name = "http/1.1".encode ()
             proto_name_bytes = bytes ([len (proto_name)]) + proto_name
             set_alpn_protos_ret = libssl_handle.SSL_CTX_set_alpn_protos (self.context, proto_name_bytes, len (proto_name_bytes))
             if set_alpn_protos_ret != 0: raise Exception ("failed to enable extension #16 (ALPN)")
 
-        if 18 in target_ja3 ["list_of_extensions"]:
+        if 18 in target_ja3.list_of_extensions:
             enable_ct_ret = libssl_handle.SSL_CTX_enable_ct (self.context, types.SSL_CT_VALIDATION_PERMISSIVE)
             if enable_ct_ret != 1: raise Exception ("failed to enable extension #18 (certificate transparency)")
 
-        if 21 not in target_ja3 ["list_of_extensions"]:
+        if 21 not in target_ja3.list_of_extensions:
             self.options ^= Options.OP_TLSEXT_PADDING
 
-        if 22 not in target_ja3 ["list_of_extensions"]:
+        if 22 not in target_ja3.list_of_extensions:
             self.options |= Options.OP_NO_ENCRYPT_THEN_MAC
 
         libssl_handle.SSL_CTX_set_options (self.context, self.options)
 
-        if 10 in target_ja3 ["list_of_extensions"] and False: # supported_groups
-            groups_list = ':'.join (str (supported_group) for supported_group in target_ja3 ["elliptic_curve"])
-            groups = target_ja3 ["elliptic_curve"]
+        if 10 in target_ja3.list_of_extensions: # supported_groups
+            target_supported_groups_array = (ctypes.c_int * len (target_ja3.elliptic_curve)) (*target_ja3.elliptic_curve)
+            libssl_handle.FAKESSL_SSL_set_groups_list (
+                self.context,
+                ctypes.cast (target_supported_groups_array, ctypes.POINTER (ctypes.c_int)),
+                len (target_ja3.elliptic_curve)
+            )
+            groups_list = ':'.join (str (supported_group) for supported_group in target_ja3.elliptic_curve)
+            groups = target_ja3.elliptic_curve
             groups_array = (ctypes.c_int * len (groups)) (*groups)
             set1_groups_list_ret = libssl_handle.SSL_CTX_set1_groups_list (self.context, groups_list)
             if set1_groups_list_ret != 1: raise Exception ("failed to set supported groups")

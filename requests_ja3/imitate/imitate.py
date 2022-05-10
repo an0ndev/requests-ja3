@@ -30,7 +30,7 @@ def generate_imitation_libssl (target_ja3: typing.Optional [decoder.JA3], use_in
 
     return fakessl
 
-def _compile_libssl (target_ja3: typing.Optional [dict], use_in_tree_libssl: bool) -> (pathlib.Path, tempfile.TemporaryDirectory):
+def _compile_libssl (target_ja3: typing.Optional [decoder.JA3], use_in_tree_libssl: bool) -> (pathlib.Path, tempfile.TemporaryDirectory):
     working_dir = tempfile.TemporaryDirectory ()
 
     try:
@@ -57,18 +57,21 @@ def _compile_libssl (target_ja3: typing.Optional [dict], use_in_tree_libssl: boo
         def quiet_exec_in_src (*args):
             popen = subprocess.Popen (args, cwd = openssl_src_path, stderr = subprocess.PIPE, stdout = subprocess.PIPE)
             stdout_data, stderr_data = popen.communicate ()
+            stderr_str = stderr_data.decode ()
+            if "warning" in stderr_str:
+                print (f"--- COMPILER WARNINGS ---\n{stderr_str}--- END COMPILER WARNINGS ---")
             if popen.returncode != 0:
-                raise Exception (stderr_data.decode ())
+                raise Exception (stderr_str)
 
         quiet_exec_in_src ("/usr/bin/chmod", "+x", "config")
         quiet_exec_in_src ("/usr/bin/chmod", "+x", "Configure")
         config_options = ["no-ssl2", "no-ssl3"]
         if target_ja3 is not None:
-            if 0xFF in target_ja3 ["accepted_ciphers"]:
+            if 0xFF in target_ja3.accepted_ciphers:
                 config_options.append ("-DFAKESSL_RFC5746_AS_CIPHER")
-            if 65281 in target_ja3 ["list_of_extensions"]:
+            if 65281 in target_ja3.list_of_extensions:
                 config_options.append ("-DFAKESSL_RFC5746_AS_EXTENSION")
-            if target_ja3 ["elliptic_curve"] is None:
+            if target_ja3.elliptic_curve is None:
                 config_options.append ("-DFAKESSL_DISABLE_ECC")
         quiet_exec_in_src ("/usr/bin/bash", "config", *config_options)
         quiet_exec_in_src ("/usr/bin/make", f"-j{os.cpu_count ()}")
