@@ -63,6 +63,8 @@ def _compile_libssl (target_ja3: typing.Optional [decoder.JA3], use_in_tree_libs
             if popen.returncode != 0:
                 raise Exception (stderr_str)
 
+        quiet_exec_in_src ("/usr/bin/make", "clean")
+
         quiet_exec_in_src ("/usr/bin/chmod", "+x", "config")
         quiet_exec_in_src ("/usr/bin/chmod", "+x", "Configure")
         config_options = ["no-ssl2", "no-ssl3", "zlib"]
