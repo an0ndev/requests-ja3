@@ -18,19 +18,25 @@ Modifying Python's `requests` module to spoof a ja3 fingerprint
     - [x] ~~dummy pybind11 + cppimport extension~~ **(moved to ctypes)**
     - [ ] ~~ability to verify fakessl against real ssl module~~ can't inspect pybind11 method signatures yet
     - [x] dummy SSLSocket class
-    - [ ] customized openssl compile options
+    - [x] customized openssl compile options
     - [x] linkage against C extension
     - [x] usage of compiled openssl in SSLSocket class
     - [x] `ssl.wrap_socket` at minimum
     - [ ] other `ssl` functions used by requests/urllib3
 - [ ] tests using ja3s from common browsers
+  - [x] brave browser (works!)
+  - [ ] firefox (segfaults)
+- [ ] `patcher`: patch fakessl into a requests module
+  - [ ] patch the module
+  - [ ] automatically test the patched module against a local server
 
-**progress (5/6/22):**
-- elliptic curve settings need work
-- compressed certificate may need to be implemented in openssl for support for certain browsers
-- I can enable most extensions automatically though
+**progress (5/13/22):**
+- all fields are customized
+- I implemented the compressed certificate extension in my fork of OpenSSL, so that works
+- Most other extensions are enabled automatically
 - server (for dumping ja3) works, with solutions for ja3er's flaws
-- hopefully I can have a working beta within a week or two :)
+- can imitate brave browser's fingerprint successfully!!!
+- need to sort segfault when imitating firefox, and finish code for patching a requests module
 
 ### REFERENCES
 JA3 specification: [https://github.com/salesforce/ja3/blob/master/README.md](https://github.com/salesforce/ja3/blob/master/README.md)

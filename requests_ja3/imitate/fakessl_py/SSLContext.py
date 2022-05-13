@@ -1,6 +1,6 @@
 import ctypes
 import typing
-import os
+import pathlib
 
 from . import libssl_type_bindings as types
 
@@ -48,6 +48,9 @@ class SSLContext:
 
         if self._is_client:
             self._do_client_setup ()
+
+        self._keylog_filename = None
+        self._keylog_callback = None
     def _do_client_setup (self):
         if 5 in target_ja3.list_of_extensions:
             set_tlsext_status_type_ret = libssl_handle.SSL_CTX_set_tlsext_status_type (self.context, types.TLSEXT_STATUSTYPE_ocsp)
@@ -70,19 +73,6 @@ class SSLContext:
             self.options |= Options.OP_NO_ENCRYPT_THEN_MAC
 
         libssl_handle.SSL_CTX_set_options (self.context, self.options)
-
-        if 10 in target_ja3.list_of_extensions: # supported_groups
-            target_supported_groups_array = (ctypes.c_int * len (target_ja3.elliptic_curve)) (*target_ja3.elliptic_curve)
-            libssl_handle.FAKESSL_SSL_set_groups_list (
-                self.context,
-                ctypes.cast (target_supported_groups_array, ctypes.POINTER (ctypes.c_int)),
-                len (target_ja3.elliptic_curve)
-            )
-            groups_list = ':'.join (str (supported_group) for supported_group in target_ja3.elliptic_curve)
-            groups = target_ja3.elliptic_curve
-            groups_array = (ctypes.c_int * len (groups)) (*groups)
-            set1_groups_list_ret = libssl_handle.SSL_CTX_set1_groups_list (self.context, groups_list)
-            if set1_groups_list_ret != 1: raise Exception ("failed to set supported groups")
     def set_ciphers (self, cipher_list: str):
         set_cipher_list_ret = libssl_handle.SSL_CTX_set_cipher_list (self.context, cipher_list.encode ())
         if set_cipher_list_ret == 0: raise Exception ("failed to set cipher list on ssl context")
@@ -110,5 +100,24 @@ class SSLContext:
         self.load_verify_locations (cafile = "/etc/ssl/certs/ca-certificates.crt", capath = "/etc/ssl/certs")
     def wrap_socket (self, socket, server_side = False, do_handshake_on_connect = True, server_hostname: typing.Optional [str] = None, session = None):
         return SSLSocket (socket, self, server_side = server_side, do_handshake_on_connect = do_handshake_on_connect, server_hostname = server_hostname, session = session)
+    def get_keylog_filename (self) -> typing.Optional [str]: return self._keylog_filename
+    def set_keylog_filename (self, keylog_filename: typing.Optional [str]):
+        should_enable = self._keylog_filename is None
+        self._keylog_filename = keylog_filename
+        if self._keylog_filename is None:
+            del self._keylog_callback
+            libssl_handle.SSL_CTX_set_keylog_callback (self.context, None)
+            return
+        if should_enable:
+            self._keylog_callback = _gen_keylog_callback (self)
+            libssl_handle.SSL_CTX_set_keylog_callback (self.context, self._keylog_callback)
+    keylog_filename = property (get_keylog_filename, set_keylog_filename)
     def __del__ (self):
         libssl_handle.SSL_CTX_free (self.context)
+
+def _gen_keylog_callback (self):
+    @types.SSL_CTX_keylog_cb_func
+    def _keylog_callback (ssl, line):
+        with open (self._keylog_filename, "a+") as keylog_file:
+            keylog_file.write (line.decode () + "\n")
+    return _keylog_callback

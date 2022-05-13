@@ -1,5 +1,6 @@
 import pathlib
 import tempfile
+import os
 
 from . import libssl_binder
 from . import SSLContext as SSLContext_module
@@ -62,4 +63,6 @@ def create_default_context (purpose: Purpose = Purpose.SERVER_AUTH, cafile = Non
         context.load_default_certs (purpose = purpose)
     else:
         context.load_verify_locations (cafile, capath, cadata)
+    if "SSLKEYLOGFILE" in os.environ:
+        context.keylog_filename = os.environ ["SSLKEYLOGFILE"]
     return context

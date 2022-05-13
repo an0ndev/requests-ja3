@@ -99,6 +99,38 @@ class SSLSocket:
             assert target_ja3.accepted_ciphers == ciphers_to_use_ids
         finally:
             libssl_handle.OPENSSL_sk_free (ctypes.cast (ciphers_to_use, types.OPENSSL_STACK_ptr))
+
+        if 10 in target_ja3.list_of_extensions: # supported_groups
+            target_supported_groups_array = (ctypes.c_uint16 * len (target_ja3.elliptic_curve)) (*target_ja3.elliptic_curve)
+            libssl_handle.FAKESSL_SSL_set_groups_list (
+                self.ssl,
+                ctypes.cast (target_supported_groups_array, ctypes.POINTER (ctypes.c_uint16)),
+                len (target_ja3.elliptic_curve)
+            )
+        if 11 in target_ja3.list_of_extensions: # EC point formats
+            target_point_formats_array = (ctypes.c_uint8 * len (target_ja3.elliptic_curve_point_format)) (*target_ja3.elliptic_curve_point_format)
+            libssl_handle.FAKESSL_SSL_set_format_list (
+                self.ssl,
+                ctypes.cast (target_point_formats_array, ctypes.POINTER (ctypes.c_uint8)),
+                len (target_ja3.elliptic_curve_point_format)
+            )
+
+        if 17513 in target_ja3.list_of_extensions: # Application Settings
+            # see https://boringssl.googlesource.com/boringssl/+/refs/heads/master/include/openssl/tls1.h#247
+            # also https://www.ietf.org/archive/id/draft-vvv-tls-alps-01.txt
+            proto_name = "http/1.1".encode ()
+            proto_name_bytes = bytes ([len (proto_name)]) + proto_name
+            libssl_handle.FAKESSL_SSL_set_alps_protos (self.ssl, proto_name_bytes, len (proto_name_bytes))
+
+        if 27 in target_ja3.list_of_extensions:
+            libssl_handle.FAKESSL_SSL_set_compress_certificates (self.ssl, True)
+
+        extensions_array = (ctypes.c_uint16 * len (target_ja3.list_of_extensions)) (*target_ja3.list_of_extensions)
+        libssl_handle.FAKESSL_SSL_set_ext_order (
+            self.ssl,
+            ctypes.cast (extensions_array, ctypes.POINTER (ctypes.c_uint16)),
+            len (target_ja3.list_of_extensions)
+        )
     def connect (self, address: tuple):
         self.socket.connect (address)
 

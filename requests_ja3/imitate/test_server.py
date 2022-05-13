@@ -32,9 +32,7 @@ class JA3Fetcher:
         while True:
             try:
                 try:
-                    print ("--> waiting for client")
                     wrapped_client, client_address = self.wrapped_server.accept ()
-                    print ("--> we have the client")
                 except OSError:
                     with self.cancelled_lock:
                         if self.cancelled: return
@@ -44,12 +42,8 @@ class JA3Fetcher:
                     regex = fr"GET /[^{crlf} ]* HTTP/1.1{crlf}" \
                             fr"(?P<headers>([^{crlf}]+: [^{crlf}]+{crlf})+)" \
                             fr"{crlf}"
-                    print (f"checking against >>{req}<<")
                     match = re.fullmatch (regex, req)
-                    if match is None:
-                        print ("no gots")
-                        return None
-                    print ("aye we got it")
+                    if match is None: return None
                     raw_headers = match.group ("headers")
                     headers = {key: value for key, value in map (lambda raw_header: raw_header.split (": "), raw_headers.split (crlf) [:-1])}
                     return headers
@@ -75,6 +69,7 @@ class JA3Fetcher:
                 user_agent = parsed_headers ["User-Agent"]
                 resp_ja3_str = wrapped_client.get_ja3_str (remove_grease = True)
                 resp_ja3 = decoder.JA3.from_string (resp_ja3_str)
+                if 41 in resp_ja3.list_of_extensions: resp_ja3.list_of_extensions.remove(41) # pre-shared key -- session resumption
                 resp_bytes = json.dumps ({
                     "ja3_hash": resp_ja3.to_hash (),
                     "ja3": resp_ja3_str,

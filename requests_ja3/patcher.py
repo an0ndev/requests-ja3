@@ -11,36 +11,37 @@ import urllib3.connection as _clean_urllib3_connection
 import urllib3.util.ssl_ as _clean_urllib3_util_ssl
 import urllib3.util.ssltransport as _clean_urllib3_util_ssltransport
 
-from requests_ja3.decoder import Decoder
+from requests_ja3.decoder import JA3
+from requests_ja3.imitate.test_server import AsyncJA3Fetcher
 from requests_ja3.patcher_utils import _module_from_class, _wrap
 from requests_ja3.ssl_utils import SSLUtils
 from requests_ja3.imitate.imitate import generate_imitation_libssl
 
 class Patcher:
     @staticmethod
-    def patch (src_requests_module: type (_clean_requests), target_ja3_str: str):
+    def patch (src_requests_module: type (_clean_requests), target_ja3: JA3):
         # def ssl_wrap_socket_hook (*args, **kwargs):
         #     print (f"ssl_wrap_socket called with args {args} kwargs {kwargs}")
         #     return args, kwargs
         # Patcher._inner_patch (src_requests_module, ssl_wrap_socket_hook)
-        fakessl = generate_imitation_libssl (target_ja3_str)
+        fakessl = generate_imitation_libssl (target_ja3)
         Patcher._inner_patch (src_requests_module, fakessl)
     @staticmethod
-    def check (requests_module: type (_clean_requests), target_ja3_str: str):
-        real_ja3_str = requests_module.get ("https://ja3er.com/json").json () ["ja3"]
-        if real_ja3_str != target_ja3_str:
-            basic_error_message = f"real ja3 {real_ja3_str} does not match target ja3 {target_ja3_str}"
-            target_ja3 = Decoder.decode (target_ja3_str)
-            real_ja3 = Decoder.decode (real_ja3_str)
+    def check (requests_module: type (_clean_requests), target_ja3: JA3):
+        fetcher_ja3 = generate_imitation_libssl(None)
+        ja3_fetcher = AsyncJA3Fetcher (fetcher_ja3)
+        ja3_fetcher.start ()
 
-            print ('-' * 10)
-            for ja3_field_name, target_ja3_field_value in target_ja3.items ():
-                real_ja3_field_value = real_ja3 [ja3_field_name]
-                if target_ja3_field_value == real_ja3_field_value: print (f"Field {ja3_field_name} matches! ({target_ja3_field_value} in both)")
-                else: print (f"Field {ja3_field_name} does not match (target {target_ja3_field_value}, real {real_ja3_field_value})")
-            print ('-' * 10)
+        try:
+            real_ja3 = JA3.from_string (requests_module.get ("https://localhost:8443/json").json () ["ja3"])
+        except:
+            ja3_fetcher.cancel ()
+            raise
 
-            raise Exception (basic_error_message)
+        ja3_fetcher.join ()
+        ja3_fetcher.fetch ()
+
+        assert real_ja3.print_comparison_with(target_ja3)
     @staticmethod
     def _inner_patch (src_requests_module: type (_clean_requests), fakessl: type (ssl)):
         src_session_class = src_requests_module.Session

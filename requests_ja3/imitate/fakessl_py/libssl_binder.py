@@ -130,7 +130,11 @@ def get_bound_libssl (libssl_path: pathlib.Path) -> (ctypes.CDLL, list [typing.C
     _s_m ("SSL_shutdown", [types.SSL_ptr], ctypes.c_int)
     # Client
     _s_m ("FAKESSL_SSL_set_cipher_list", [types.SSL_ptr, ctypes.POINTER (ctypes.c_uint16), ctypes.c_int], None)
-    _s_m ("FAKESSL_SSL_set_groups_list", [types.SSL_ptr, ctypes.POINTER (ctypes.c_int), ctypes.c_int], None)
+    _s_m ("FAKESSL_SSL_set_groups_list", [types.SSL_ptr, ctypes.POINTER (ctypes.c_uint16), ctypes.c_int], None)
+    _s_m ("FAKESSL_SSL_set_format_list", [types.SSL_ptr, ctypes.POINTER (ctypes.c_uint8), ctypes.c_int], None)
+    _s_m ("FAKESSL_SSL_set_alps_protos", [types.SSL_ptr, ctypes.c_char_p, ctypes.c_uint], None)
+    _s_m ("FAKESSL_SSL_set_compress_certificates", [types.SSL_ptr, ctypes.c_bool], None)
+    _s_m ("FAKESSL_SSL_set_ext_order", [types.SSL_ptr, ctypes.POINTER (ctypes.c_uint16), ctypes.c_int], None)
     # Server
     _s_m ("FAKESSL_SSL_get_ja3", [types.SSL_ptr, ctypes.c_bool], ctypes.c_void_p)
     _s_m ("SSL_free", [types.SSL_ptr], None)
@@ -164,5 +168,7 @@ def get_bound_libssl (libssl_path: pathlib.Path) -> (ctypes.CDLL, list [typing.C
     _s_m ("ERR_print_errors_cb", [types.ERR_print_errors_cb_callback, ctypes.c_void_p], None)
 
     _s_m ("CRYPTO_free", [ctypes.c_void_p, ctypes.c_char_p, ctypes.c_int], None)
+
+    _s_m ("SSL_CTX_set_keylog_callback", [types.SSL_CTX_ptr, types.SSL_CTX_keylog_cb_func], None)
 
     return libssl_handle, binder_time_mixin_methods

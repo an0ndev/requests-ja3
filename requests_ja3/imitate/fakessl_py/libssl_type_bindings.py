@@ -30,6 +30,7 @@ class ASN1_STRING_ptr      (ctypes.c_void_p): pass
 class ASN1_TIME_ptr        (ctypes.c_void_p): pass
 class ASN1_INTEGER_ptr     (ctypes.c_void_p): pass
 ERR_print_errors_cb_callback = ctypes.CFUNCTYPE (ctypes.c_int, ctypes.c_char_p, ctypes.c_size_t, ctypes.c_void_p)
+SSL_CTX_keylog_cb_func = ctypes.CFUNCTYPE (None, SSL_ptr, ctypes.c_char_p)
 
 # <OpenSSL src>/include/openssl/x509.h
 X509_FILETYPE_PEM = 1

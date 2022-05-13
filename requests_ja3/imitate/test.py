@@ -8,21 +8,20 @@ import ssl as system_ssl
 import requests_ja3.decoder as decoder
 from requests_ja3.imitate.test_server import AsyncJA3Fetcher, UserAgent
 
-def ja3_from_any_ssl (ssl_module: type (system_ssl)) -> (decoder.JA3, UserAgent):
+def ja3_from_any_ssl (ssl_module: type (system_ssl), start_server: bool = True) -> (decoder.JA3, UserAgent):
     # ssl_module.test_no_ssl (client)
     # ssl_module.test_ssl (client)
     # return
 
+    if not start_server:
+        return make_req_to_local_server(ssl_module)
 
     ja3_fetcher = AsyncJA3Fetcher (ssl_module)
     ja3_fetcher.start ()
 
     try:
-        print ("making req")
         make_req_to_local_server (ssl_module)
-        print ("done making req")
     except:
-        print ("caught exception")
         ja3_fetcher.cancel ()
         raise
 
@@ -30,17 +29,17 @@ def ja3_from_any_ssl (ssl_module: type (system_ssl)) -> (decoder.JA3, UserAgent)
 
     return ja3_fetcher.fetch ()
 
-def make_req_to_local_server (ssl_module: type (system_ssl)):
+
+def make_req_to_local_server (ssl_module: type (system_ssl)) -> (decoder.JA3, UserAgent):
     context = ssl_module.create_default_context ()
     server_cert_dir = pathlib.Path (__file__).parent / "server_cert"
     context.load_verify_locations (cafile = str (server_cert_dir / "localhost.crt"))
+    # context.keylog_filename = str (pathlib.Path.home () / "ssl-key.log")
 
     client = socket.socket (socket.AF_INET, socket.SOCK_STREAM)
 
     wrapped_client = context.wrap_socket (client, server_hostname = "localhost")
-    print ("connecting")
     wrapped_client.connect (("localhost", 8443))
-    print ("connected, writing")
     def make_req (meth: str, url: str, headers: dict):
         crlf = "\r\n"
         return f"{meth} {url} HTTP/1.1{crlf}" \
@@ -59,16 +58,15 @@ def make_req_to_local_server (ssl_module: type (system_ssl)):
         "Accept": "*/*",
         "User-Agent": "requests-ja3/HEAD"
     }))
-    print ("done writing, reading response")
     in_buffer: bytearray = b""
     while True:
         in_bytes = wrapped_client.read (1024)
         if len (in_bytes) == 0: break
         in_buffer += in_bytes
     in_resp = in_buffer.decode ()
-    print ("got the resp")
     in_resp_body = parse_resp (in_resp)
     in_json = json.loads (in_resp_body)
     wrapped_client.close ()
     del wrapped_client
     del context
+    return decoder.JA3.from_string(in_json["ja3"]), in_json["User-Agent"]
