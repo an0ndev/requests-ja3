@@ -78,6 +78,7 @@ class SSLSocket:
         # (the list of supported ciphers starts as the list of all available)
         supported_ciphers_ids = libssl_handle.cipher_ids_from_stack (supported_ciphers)
         for required_cipher in target_ja3.accepted_ciphers:
+            if required_cipher == 255: continue # renegotiation info as cipher
             if required_cipher not in supported_ciphers_ids:
                 raise Exception (f"Your build of OpenSSL does not support cipher {required_cipher}")
 
