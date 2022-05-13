@@ -96,6 +96,7 @@ class SSLSocket:
         ciphers_to_use: types.STACK_OF_SSL_CIPHER_ptr = libssl_handle.SSL_get1_supported_ciphers (self.ssl)
         try:
             ciphers_to_use_ids = libssl_handle.cipher_ids_from_stack (ciphers_to_use)
+            if 255 in target_ja3.accepted_ciphers: ciphers_to_use_ids.append(255) # enabled by imitate.py with FAKESSL_RFC5746_AS_CIPHER define
             print (f"CIPHERS TO USE: {ciphers_to_use_ids}")
             assert target_ja3.accepted_ciphers == ciphers_to_use_ids
         finally:
