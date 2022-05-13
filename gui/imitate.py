@@ -59,7 +59,7 @@ class JA3ImitatorGUI:
         result_text = f"JA3 from Test: {received_ja3.to_hash()}"
         if self.ssl_type == "fakessl":
             try:
-                self.current_ja3.print_comparison_with(received_ja3)
+                received_ja3.print_comparison_with(self.current_ja3)
                 result_text += " (MATCHES)"
             except AssertionError as e:
                 print(e)
