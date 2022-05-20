@@ -25,6 +25,8 @@ class JA3ImitatorGUI:
         self.target_fingerprint_field.grid(row = 1, column = 1)
         self.regenerate_button = tkinter.Button(self.container, text = "Regenerate fakessl", command = self._regenerate_fakessl, **self.COMMON)
         self.regenerate_button.grid(row = 2, columnspan = 2)
+        self.reset_button = tkinter.Button(self.container, text = "Reset to System", command = self._reset, **self.COMMON)
+        self.reset_button.grid(row = 3, columnspan = 2)
 
         self.ssl_type: str = "System SSL"
         self.current_ja3: typing.Optional[JA3] = None
@@ -34,11 +36,11 @@ class JA3ImitatorGUI:
         self.fakessl_in_use_label = tkinter.Label(self.container, textvariable = self.fakessl_in_use_var, **self.COMMON)
         self.fakessl_in_use_label.grid(row = 0, columnspan = 2)
         self.test_button = tkinter.Button(self.container, text = "Test Current SSL", command = self._test_fakessl, **self.COMMON)
-        self.test_button.grid(row = 3, columnspan = 2)
+        self.test_button.grid(row = 4, columnspan = 2)
         self.test_result_var = tkinter.StringVar(self.container)
         self.test_result_var.set("JA3 from Test: (n/a)")
         self.test_result = tkinter.Label(self.container, textvariable = self.test_result_var, **self.COMMON)
-        self.test_result.grid(row = 4, columnspan = 2)
+        self.test_result.grid(row = 5, columnspan = 2)
 
         self.fakessl = system_ssl
     def _update_fakessl_in_use_var(self):
@@ -49,10 +51,17 @@ class JA3ImitatorGUI:
     def run(self):
         self.root.mainloop()
     def _regenerate_fakessl (self):
+        self.test_result_var.set ("JA3 from Test: (n/a)")
         target_fingerprint_str = self.target_fingerprint_var.get()
         self.current_ja3 = JA3.from_string(target_fingerprint_str)
         self.fakessl = generate_imitation_libssl(self.current_ja3, True)
         self.ssl_type = "fakessl"
+        self._update_fakessl_in_use_var()
+    def _reset(self):
+        self.test_result_var.set ("JA3 from Test: (n/a)")
+        self.fakessl = system_ssl
+        self.current_ja3 = None
+        self.ssl_type = "System SSL"
         self._update_fakessl_in_use_var()
     def _test_fakessl (self):
         received_ja3, received_user_agent = ja3_from_any_ssl(self.fakessl, start_server = False)

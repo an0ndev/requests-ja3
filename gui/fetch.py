@@ -1,3 +1,5 @@
+import copy
+import functools
 import threading
 import tkinter
 import datetime
@@ -37,10 +39,16 @@ class JA3FetcherGUI:
         self.output_frame.grid(row = 1)
         self.current_output_frame_row = 0
 
+        self.data_widgets = []
+        self.first = True
+
         self.cancelled = False
         self.shut_down = False
         self.cancel_button = tkinter.Button (self.container, command = self._cancel, text = "Close", **self.COMMON, relief = tkinter.SOLID, borderwidth = 0)
-        self.cancel_button.grid(row = 2)
+        self.cancel_button.grid(row = 3)
+        self.clear_button = tkinter.Button (self.container, command = self._clear, text = "Clear", **self.COMMON,
+                                             relief = tkinter.SOLID, borderwidth = 0)
+        self.clear_button.grid (row = 2)
         self.last_ja3: typing.Optional[JA3] = None
         self._fetch_thread.start ()
     def run (self):
@@ -59,6 +67,12 @@ class JA3FetcherGUI:
     def _copy (self, ja3: JA3):
         self.root.clipboard_clear()
         self.root.clipboard_append(ja3.to_string())
+    def _clear(self):
+        for data_widget in self.data_widgets:
+            data_widget.grid_forget()
+            data_widget.destroy()
+        self.data_widgets = []
+        self.current_output_frame_row = 0 if self.first else 1
     def _fetch_func (self):
         while True:
             self.fetcher = JA3Fetcher (self.fakessl)
@@ -69,18 +83,29 @@ class JA3FetcherGUI:
 
             now = datetime.datetime.now ().strftime ("%X")
 
-            if self.current_output_frame_row == 0:
+            if self.first:
                 tkinter.Label (self.output_frame, text = "Time", **self.COMMON).grid (row = 0, column = 0)
                 tkinter.Label (self.output_frame, text = "Reports As", **self.COMMON).grid (row = 0, column = 1)
                 tkinter.Label (self.output_frame, text = "JA3 Hash", **self.COMMON).grid (row = 0, column = 2)
                 tkinter.Label (self.output_frame, text = "Copy", **self.COMMON).grid (row = 0, column = 3)
                 self.current_output_frame_row += 1
+                self.first = False
 
-            tkinter.Label (self.output_frame, text = now, **self.COMMON).grid (row = self.current_output_frame_row, column = 0)
-            tkinter.Label (self.output_frame, text = user_agent, **self.COMMON).grid (row = self.current_output_frame_row, column = 1)
-            tkinter.Label (self.output_frame, text = ja3.to_hash(), **self.COMMON).grid (row = self.current_output_frame_row, column = 2)
-            tkinter.Button (self.output_frame, command = lambda: self._copy(ja3), text = "Copy", **self.COMMON,
-                                               relief = tkinter.SOLID, borderwidth = 0).grid(row = self.current_output_frame_row, column = 3)
+            new_time = tkinter.Label (self.output_frame, text = now, **self.COMMON)
+            new_time.grid (row = self.current_output_frame_row, column = 0)
+            new_user_agent = tkinter.Label (self.output_frame, text = user_agent, **self.COMMON)
+            new_user_agent.grid (row = self.current_output_frame_row, column = 1)
+            new_hash = tkinter.Label (self.output_frame, text = ja3.to_hash(), **self.COMMON)
+            new_hash.grid (row = self.current_output_frame_row, column = 2)
+            new_copy_btn = tkinter.Button (self.output_frame, command = functools.partial (self._copy, ja3), text = "Copy", **self.COMMON,
+                                               relief = tkinter.SOLID, borderwidth = 0)
+            new_copy_btn.grid(row = self.current_output_frame_row, column = 3)
+
+            self.data_widgets.append(new_time)
+            self.data_widgets.append(new_user_agent)
+            self.data_widgets.append(new_hash)
+            self.data_widgets.append(new_copy_btn)
+
             self.current_output_frame_row += 1
 
 if __name__ == "__main__":
